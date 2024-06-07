@@ -1,12 +1,15 @@
+pub mod code;
 pub mod js;
 pub mod jsify;
+pub mod option;
 #[cfg(test)]
 mod tests;
 
+use code::{Code, build::CodeBuilder};
 use js::Js;
 use jsify::Jsify;
 use karinc::hir::lower::HirLowering;
-use karinc::hir::{id::*, Hir};
+use karinc::hir::Hir;
 use karinc::input::*;
 use karinc::log::CompilerLog;
 use karinc::lexer::tokenize::Lexer;
@@ -15,18 +18,46 @@ use karinc::parser::ast::Ast;
 use karinc::parser::{Parser, ParserHakoContext};
 use karinc::typesys::constraint::lower::TypeConstraintLowering;
 use karinc::typesys::constraint::TypeLog;
+use option::CompilerOptions;
 
-pub struct JsTranspiler;
+pub struct Compiler;
 
-impl JsTranspiler {
-    pub fn compile(input: &InputTree) -> JsOutput {
+impl Compiler {
+    pub fn compile(input: &InputTree, options: &CompilerOptions) -> Output {
+        let js = Compiler::jsify(input);
+        if options.bundles {
+            let mut code_builder = CodeBuilder::new();
+            let mut code = Code::new();
+            for (each_path, each_item) in &js.items {
+                let new_item = code_builder.code_item(each_path, each_item);
+                code.append(&new_item);
+            }
+            let file = OutputFile {
+                name: options.root_source_name.clone(),
+                ext: OutputFileExt::Js,
+                source: Some(code),
+            };
+            Output {
+                files: vec![file],
+                logs: Vec::new(), // fix
+            }
+        } else {
+            unimplemented!();
+        }
+    }
+
+    pub fn jsify(input: &InputTree) -> Js {
+        let (hir, hir_lowering_logs) = Compiler::gen_hir(input);
+        let mut jsify = Jsify::new();
+        jsify.jsify(&hir)
+    }
+
+    pub fn gen_hir(input: &InputTree) -> (Hir, Vec<CompilerLog>) {
         // todo: モジュールごとのログ出力を見る
-        let (hir_lowering_input, mut top_level_type_table) = JsTranspiler::gen_hir_lowering_input(input);
-        let (hir, hir_compiler_logs) = JsTranspiler::hirify(&hir_lowering_input);
-        let type_logs = JsTranspiler::check_type(&hir, &mut top_level_type_table);
-        let mut output_mods = Vec::new();
-        // todo: ログを反映する
-        JsOutput { mods: output_mods, logs: Vec::new() }
+        let (hir_lowering_input, mut top_level_type_table) = Compiler::gen_hir_lowering_input(input);
+        let (hir, hir_compiler_logs) = Compiler::hirify(&hir_lowering_input);
+        let type_logs = Compiler::check_type(&hir, &mut top_level_type_table);
+        (hir, Vec::new())
     }
 
     pub fn gen_hir_lowering_input(input: &InputTree) -> (HirLoweringInput, TopLevelTypeTable) {
@@ -36,7 +67,7 @@ impl JsTranspiler {
         let mut top_level_type_table = TopLevelTypeTable::new();
         for each_hako in &input.hakos {
             for each_mod in &each_hako.mods {
-                let (new_mod, mut compiler_logs) = JsTranspiler::gen_hir_lowering_mod(each_hako, each_mod, &mut top_level_type_table);
+                let (new_mod, mut compiler_logs) = Compiler::gen_hir_lowering_mod(each_hako, each_mod, &mut top_level_type_table);
                 mods.push(new_mod);
                 logs.append(&mut compiler_logs);
             }
@@ -83,11 +114,6 @@ impl JsTranspiler {
     pub fn check_type(hir: &Hir, top_level_type_table: &mut TopLevelTypeTable) -> Vec<TypeLog> {
         TypeConstraintLowering::lower(hir, top_level_type_table).1
     }
-
-    pub fn jsify(hir: &Hir) -> Js {
-        let mut jsify = Jsify::new();
-        jsify.jsify(hir)
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -102,14 +128,19 @@ pub struct HirLoweringMod {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct JsOutput {
-    pub mods: Vec<JsOutputMod>,
+pub struct Output {
+    pub files: Vec<OutputFile>,
     pub logs: Vec<CompilerLog>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct JsOutputMod {
-    pub mod_id: ModId,
-    pub source: Option<String>,
-    pub submods: Vec<JsOutputMod>,
+pub struct OutputFile {
+    pub name: String,
+    pub ext: OutputFileExt,
+    pub source: Option<Code>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum OutputFileExt {
+    Js,
 }
