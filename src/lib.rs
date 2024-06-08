@@ -2,6 +2,7 @@ pub mod code;
 pub mod js;
 pub mod jsify;
 pub mod option;
+pub mod output;
 #[cfg(test)]
 mod tests;
 
@@ -18,7 +19,8 @@ use karinc::parser::ast::Ast;
 use karinc::parser::{Parser, ParserHakoContext};
 use karinc::typesys::constraint::lower::TypeConstraintLowering;
 use karinc::typesys::constraint::TypeLog;
-use option::CompilerOptions;
+use option::*;
+use output::*;
 
 pub struct Compiler;
 
@@ -125,22 +127,4 @@ pub struct HirLoweringInput {
 #[derive(Clone, Debug, PartialEq)]
 pub struct HirLoweringMod {
     pub ast: Option<Ast>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Output {
-    pub files: Vec<OutputFile>,
-    pub logs: Vec<CompilerLog>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct OutputFile {
-    pub name: String,
-    pub ext: OutputFileExt,
-    pub source: Option<Code>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum OutputFileExt {
-    Js,
 }
