@@ -8,10 +8,10 @@ use karinc::{hir::id::*, input::*};
 fn compiles() {
     let input = InputTree {
         hakos: vec![
-            HakoInput {
+            InputHako {
                 id: HakoId::new(0),
                 mods: vec![
-                    ModInput {
+                    InputMod {
                         id: ModId::new(0, 0),
                         path: "my_hako::my_mod".into(),
                         source: "fn f(a bool,b bool){}".to_string(),

@@ -78,7 +78,7 @@ impl Compiler {
         (input, top_level_type_table)
     }
 
-    pub fn gen_hir_lowering_mod(hako: &HakoInput, r#mod: &ModInput, top_level_type_table: &mut TopLevelTypeTable) -> (HirLoweringMod, Vec<CompilerLog>) {
+    pub fn gen_hir_lowering_mod(hako: &InputHako, r#mod: &InputMod, top_level_type_table: &mut TopLevelTypeTable) -> (HirLoweringMod, Vec<CompilerLog>) {
         let lexer = Lexer::new();
         // fix: ログの処理方法：レクサログがあったらここで中断するか？
         let (tokens, lexer_logs) = lexer.tokenize(&r#mod.source);
