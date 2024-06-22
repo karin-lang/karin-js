@@ -3,6 +3,7 @@ use crate::option::{CompilerOptions, JsModule};
 use crate::{Compiler, Output, OutputFile, OutputFileExt};
 
 use karinc::{hir::id::*, input::*};
+use maplit::hashmap;
 
 #[test]
 fn compiles() {
@@ -41,7 +42,9 @@ fn compiles() {
                     ),
                 },
             ],
-            logs: Vec::new(),
+            logs: hashmap! {
+                ModId::new(0, 0) => Vec::new(),
+            },
         },
     );
 }
