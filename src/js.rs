@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use karinc::lexer::token;
 use karinc::parser::ast;
 use karinc::hir::id::*;
 
@@ -27,20 +28,17 @@ pub struct FnDecl {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Body {
     pub arg_len: usize,
-    pub stmts: Vec<Stmt>,
+    pub elems: Vec<Elem>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Stmt {
-    Expr(Expr),
+pub enum Elem {
+    VarDef(VarDef),
+    Literal(token::Literal),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Expr {
-    Literal(Literal),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Literal {
-    Bool { value: bool },
+pub struct VarDef {
+    pub id: VarId,
+    pub init: Option<Box<Elem>>,
 }

@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod jsify;
+
 use crate::code::Code;
 use crate::option::{CompilerOptions, JsModule};
 use crate::{Compiler, Output, OutputFile, OutputFileExt};
