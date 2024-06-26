@@ -30,6 +30,11 @@ impl Jsify {
         Js { items }
     }
 
+    pub fn jsify_block(&mut self, vars: &Vec<hir::VarDef>, block: &hir::Block) -> Block {
+        let elems = block.exprs.iter().map(|expr| self.jsify_expr(vars, expr)).collect();
+        Block { elems }
+    }
+
     pub fn jsify_item(&mut self, item: &hir::Item) -> Item {
         let kind = match &item.kind {
             hir::ItemKind::FnDecl(decl) => ItemKind::FnDecl(self.jsify_fn_decl(decl)),
@@ -40,24 +45,40 @@ impl Jsify {
     pub fn jsify_fn_decl(&mut self, decl: &hir::FnDecl) -> FnDecl {
         let mut elems = Vec::new();
         for expr in &decl.body.exprs {
-            let new_elem = self.jsify_expr(expr, &decl.body.vars);
+            let new_elem = self.jsify_expr(&decl.body.vars, expr);
             elems.push(new_elem);
         }
         let body = Body { arg_len: decl.body.args.len(), elems };
         FnDecl { body }
     }
 
-    pub fn jsify_expr(&mut self, expr: &hir::Expr, vars: &Vec<hir::VarDef>) -> Elem {
+    pub fn jsify_expr(&mut self, vars: &Vec<hir::VarDef>, expr: &hir::Expr) -> Elem {
         match &expr.kind {
+            hir::ExprKind::Block(block) => Elem::Block(self.jsify_block(vars, block)),
             hir::ExprKind::Literal(literal) => Elem::Literal(literal.clone()),
             hir::ExprKind::VarDef(var_id) => Elem::VarDef(self.jsify_var_def(vars, var_id)),
+            hir::ExprKind::If(r#if) => Elem::If(self.jsify_if(vars, r#if)),
             _ => unimplemented!(),
         }
     }
 
     pub fn jsify_var_def(&mut self, vars: &Vec<hir::VarDef>, var_id: &VarId) -> VarDef {
         let var_def = vars.get(var_id.into_usize()).expect("unknown variable id");
-        let init = var_def.init.as_ref().map(|expr| Box::new(self.jsify_expr(expr, vars)));
+        let init = var_def.init.as_ref().map(|expr| Box::new(self.jsify_expr(vars, expr)));
         VarDef { id: *var_id, init }
+    }
+
+    pub fn jsify_if(&mut self, vars: &Vec<hir::VarDef>, r#if: &hir::If) -> If {
+        let cond = Box::new(self.jsify_expr(vars, &r#if.cond));
+        let block = self.jsify_block(vars, &r#if.block);
+        let elifs = r#if.elifs.iter().map(|elif| self.jsify_elif(vars, elif)).collect();
+        let r#else = r#if.r#else.as_ref().map(|block| self.jsify_block(vars, block));
+        If { cond, block, elifs, r#else }
+    }
+
+    pub fn jsify_elif(&mut self, vars: &Vec<hir::VarDef>, elif: &hir::Elif) -> Elif {
+        let cond = Box::new(self.jsify_expr(vars, &elif.cond));
+        let block = self.jsify_block(vars, &elif.block);
+        Elif { cond, block }
     }
 }
