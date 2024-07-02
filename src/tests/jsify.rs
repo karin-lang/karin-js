@@ -1,239 +1,170 @@
-use karinc::lexer::token::{self, Span};
-use karinc::parser::ast::{self, Id};
+use crate::*;
+use crate::js::*;
+
+use jsify::{BlockLastBind, BodyScope, StmtSeq};
+use karinc::lexer::token;
+use karinc::lexer::token::Span;
+use karinc::parser::ast;
 use karinc::hir;
 use karinc::hir::id::*;
+use karinc::typesys;
+use karinc::typesys::constraint::TypeConstraint;
 use maplit::hashmap;
 
-use crate::js::*;
-use crate::jsify::Jsify;
-
-/* item */
-
-#[test]
-fn jsifies_items() {
-    let mut jsify = Jsify::new();
-    let hir = hir::Hir {
-        items: hashmap! {
-            "my_hako::f".into() => hir::Item {
-                id: ItemId::new(0, 0),
-                accessibility: ast::Accessibility::Default,
-                kind: hir::ItemKind::FnDecl(
-                    hir::FnDecl {
-                        body: hir::Body {
-                            ret_type: Some(
-                                hir::Type {
-                                    kind: Box::new(hir::TypeKind::Prim(ast::PrimType::Bool)),
-                                },
-                            ),
-                            args: vec![
-                                hir::FormalArgDef {
-                                    id: FormalArgId::new(0),
-                                    ref_mut: ast::RefMut::None,
-                                    r#type: hir::Type {
-                                        kind: Box::new(hir::TypeKind::Prim(ast::PrimType::Bool)),
-                                    },
-                                },
-                            ],
-                            vars: vec![
-                                hir::VarDef {
-                                    id: Id { id: "id".to_string(), span: Span::new(0, 0) },
-                                    ref_mut: ast::RefMut::None,
-                                    r#type: None,
-                                    init: None,
-                                },
-                            ],
-                            exprs: vec![
-                                hir::Expr {
-                                    id: ExprId::new(0),
-                                    kind: hir::ExprKind::VarDef(VarId::new(0)),
-                                },
-                            ],
-                        },
-                    },
-                ),
-            },
-        },
-    };
-
-    assert_eq!(
-        jsify.jsify(&hir),
-        Js {
-            items: hashmap! {
-                "my_hako::f".into() => Item {
-                    id: ItemId::new(0, 0),
-                    kind: ItemKind::FnDecl(
-                        FnDecl {
-                            body: Body {
-                                arg_len: 1,
-                                elems: vec![
-                                    Elem::VarDef(
-                                        VarDef {
-                                            id: VarId::new(0),
-                                            init: None,
-                                        },
-                                    ),
-                                ],
-                            },
-                        },
-                    ),
-                },
-            },
-        },
-    );
-    assert!(jsify.get_logs().is_empty());
+fn generate_body(id: usize) -> hir::Body {
+    hir::Body {
+        id: BodyId::new(id),
+        ret_type: None,
+        args: Vec::new(),
+        vars: Vec::new(),
+        exprs: Vec::new(),
+    }
 }
-
-#[test]
-fn jsifies_fn_decl_item() {
-    let mut jsify = Jsify::new();
-    let hir = hir::Item {
-        id: ItemId::new(0, 0),
-        accessibility: ast::Accessibility::Default,
-        kind: hir::ItemKind::FnDecl(
-            hir::FnDecl {
-                body: hir::Body {
-                    ret_type: Some(
-                        hir::Type {
-                            kind: Box::new(hir::TypeKind::Prim(ast::PrimType::Bool)),
-                        },
-                    ),
-                    args: vec![
-                        hir::FormalArgDef {
-                            id: FormalArgId::new(0),
-                            ref_mut: ast::RefMut::None,
-                            r#type: hir::Type {
-                                kind: Box::new(hir::TypeKind::Prim(ast::PrimType::Bool)),
-                            },
-                        },
-                    ],
-                    vars: vec![
-                        hir::VarDef {
-                            id: Id { id: "id".to_string(), span: Span::new(0, 0) },
-                            ref_mut: ast::RefMut::None,
-                            r#type: None,
-                            init: None,
-                        },
-                    ],
-                    exprs: vec![
-                        hir::Expr {
-                            id: ExprId::new(0),
-                            kind: hir::ExprKind::VarDef(VarId::new(0)),
-                        },
-                    ],
-                },
-            },
-        ),
-    };
-
-    assert_eq!(
-        jsify.jsify_item(&hir),
-        Item {
-            id: ItemId::new(0, 0),
-            kind: ItemKind::FnDecl(
-                FnDecl {
-                    body: Body {
-                        arg_len: 1,
-                        elems: vec![
-                            Elem::VarDef(
-                                VarDef {
-                                    id: VarId::new(0),
-                                    init: None,
-                                },
-                            ),
-                        ],
-                    },
-                },
-            ),
-        },
-    );
-    assert!(jsify.get_logs().is_empty());
-}
-
-/* block */
-
-#[test]
-fn jsifies_block_expr() {
-    let mut jsify = Jsify::new();
-    let hir = hir::Expr {
-        id: ExprId::new(0),
-        kind: hir::ExprKind::Block(
-            hir::Block {
-                exprs: vec![
-                    hir::Expr {
-                        id: ExprId::new(1),
-                        kind: hir::ExprKind::Literal(
-                            token::Literal::Bool { value: true },
-                        ),
-                    },
-                ],
-            }
-        ),
-    };
-    let vars = vec![
-        hir::VarDef {
-            id: Id { id: "id".to_string(), span: Span::new(0, 0) },
-            ref_mut: ast::RefMut::None,
-            r#type: None,
-            init: Some(
-                hir::Expr {
-                    id: ExprId::new(0),
-                    kind: hir::ExprKind::Literal(
-                        token::Literal::Bool { value: true },
-                    ),
-                },
-            ),
-        },
-    ];
-
-    assert_eq!(
-        jsify.jsify_expr(&vars, &hir),
-        Elem::Block(
-            Block {
-                elems: vec![
-                    Elem::Literal(
-                        token::Literal::Bool { value: true },
-                    ),
-                ],
-            },
-        ),
-    );
-    assert!(jsify.get_logs().is_empty());
-}
-
-/* literal */
 
 #[test]
 fn jsifies_literal_expr() {
-    let mut jsify = Jsify::new();
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
     let hir = hir::Expr {
         id: ExprId::new(0),
         kind: hir::ExprKind::Literal(
             token::Literal::Bool { value: true },
         ),
     };
-    let vars = Vec::new();
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
 
     assert_eq!(
-        jsify.jsify_expr(&vars, &hir),
-        Elem::Literal(
-            token::Literal::Bool { value: true },
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(
+            Expr::Literal(
+                Literal::Derived(
+                    token::Literal::Bool { value: true },
+                ),
+            ),
         ),
     );
     assert!(jsify.get_logs().is_empty());
 }
 
-/* variable definition */
+#[test]
+fn jsifies_block_expr() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::Block(
+            hir::Block {
+                exprs: vec![
+                    hir::Expr {
+                        id: ExprId::new(0),
+                        kind: hir::ExprKind::Literal(
+                            token::Literal::Bool { value: true },
+                        ),
+                    },
+                ],
+            },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Block(
+            Block {
+                stmts: vec![
+                    Stmt::Expr(
+                        Expr::Literal(
+                            Literal::Derived(
+                                token::Literal::Bool { value: true },
+                            ),
+                        ),
+                    ),
+                ],
+            },
+        ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_block_with_last_bind() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Block {
+        exprs: vec![
+            hir::Expr {
+                id: ExprId::new(0),
+                kind: hir::ExprKind::Literal(
+                    token::Literal::Bool { value: true },
+                ),
+            },
+            hir::Expr {
+                id: ExprId::new(1),
+                kind: hir::ExprKind::Literal(
+                    token::Literal::Bool { value: true },
+                ),
+            },
+        ],
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let result = jsify.jsify_block(&mut body_scope, &hir, BlockLastBind::LastBind { tmp_id: 0 });
+
+    assert_eq!(
+        result,
+        Block {
+            stmts: vec![
+                Stmt::Expr(
+                    Expr::Literal(
+                        Literal::Derived(
+                            token::Literal::Bool { value: true },
+                        ),
+                    ),
+                ),
+                Stmt::VarBind(
+                    VarBind {
+                        id: Id::Tmp(0),
+                        value: Box::new(
+                            Expr::Literal(
+                                Literal::Derived(
+                                    token::Literal::Bool { value: true },
+                                ),
+                            ),
+                        ),
+                    },
+                ),
+            ],
+        },
+    );
+    assert!(jsify.get_logs().is_empty());
+}
 
 #[test]
 fn jsifies_var_def_expr() {
-    let mut jsify = Jsify::new();
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
     let hir = hir::Expr {
         id: ExprId::new(0),
         kind: hir::ExprKind::VarDef(VarId::new(0)),
     };
-    let vars = vec![
+    let mut body = generate_body(0);
+    body.vars = vec![
         hir::VarDef {
-            id: Id { id: "id".to_string(), span: Span::new(0, 0) },
+            id: ast::Id { id: "id".to_string(), span: Span::new(0, 0) },
             ref_mut: ast::RefMut::None,
             r#type: None,
             init: Some(
@@ -246,30 +177,102 @@ fn jsifies_var_def_expr() {
             ),
         },
     ];
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
 
     assert_eq!(
-        jsify.jsify_expr(&vars, &hir),
-        Elem::VarDef(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::VarDef(
             VarDef {
-                id: VarId::new(0),
+                id: Id::Var(0),
                 init: Some(
-                    Box::new(
-                        Elem::Literal(
+                    Expr::Literal(
+                        Literal::Derived(
                             token::Literal::Bool { value: true },
                         ),
                     ),
                 ),
-            },
+            }
         ),
     );
     assert!(jsify.get_logs().is_empty());
 }
 
-/* if expression */
+#[test]
+fn jsifies_var_bind_expr() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::VarBind(
+            hir::VarBind {
+                var_id: VarId::new(0),
+                value: Box::new(
+                    hir::Expr {
+                        id: ExprId::new(0),
+                        kind: hir::ExprKind::Literal(
+                            token::Literal::Bool { value: true },
+                        ),
+                    },
+                ),
+            },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::VarBind(
+            VarBind {
+                id: Id::Var(0),
+                value: Box::new(
+                    Expr::Literal(
+                        Literal::Derived(
+                            token::Literal::Bool { value: true },
+                        ),
+                    ),
+                ),
+            }
+        ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
 
 #[test]
 fn jsifies_if_expr() {
-    let mut jsify = Jsify::new();
+    let type_table = hashmap! {
+        TypeId::Expr(BodyId::new(0), ExprId::new(0)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Void)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(1)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Void)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(2)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Void)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(3)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Void)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(4)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Void)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(5)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Void)),
+        ),
+    }.into();
+    let mut jsify = Jsify::new(&type_table);
     let hir = hir::Expr {
         id: ExprId::new(0),
         kind: hir::ExprKind::If(
@@ -303,7 +306,14 @@ fn jsifies_if_expr() {
                             },
                         ),
                         block: hir::Block {
-                            exprs: Vec::new(),
+                            exprs: vec![
+                                hir::Expr {
+                                    id: ExprId::new(4),
+                                    kind: hir::ExprKind::Literal(
+                                        token::Literal::Bool { value: true },
+                                    ),
+                                },
+                            ],
                         },
                     },
                 ],
@@ -311,7 +321,7 @@ fn jsifies_if_expr() {
                     hir::Block {
                         exprs: vec![
                             hir::Expr {
-                                id: ExprId::new(4),
+                                id: ExprId::new(5),
                                 kind: hir::ExprKind::Literal(
                                     token::Literal::Bool { value: true },
                                 ),
@@ -322,41 +332,68 @@ fn jsifies_if_expr() {
             },
         ),
     };
-    let vars = Vec::new();
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
 
     assert_eq!(
-        jsify.jsify_expr(&vars, &hir),
-        Elem::If(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::If(
             If {
                 cond: Box::new(
-                    Elem::Literal(
-                        token::Literal::Bool { value: true },
+                    Expr::Literal(
+                        Literal::Derived(
+                            token::Literal::Bool { value: true },
+                        ),
                     ),
                 ),
                 block: Block {
-                    elems: vec![
-                        Elem::Literal(
-                            token::Literal::Bool { value: true },
+                    stmts: vec![
+                        Stmt::Expr(
+                            Expr::Literal(
+                                Literal::Derived(
+                                    token::Literal::Bool { value: true },
+                                ),
+                            ),
                         ),
                     ],
                 },
                 elifs: vec![
                     Elif {
                         cond: Box::new(
-                            Elem::Literal(
-                                token::Literal::Bool { value: true },
+                            Expr::Literal(
+                                Literal::Derived(
+                                    token::Literal::Bool { value: true },
+                                ),
                             ),
                         ),
                         block: Block {
-                            elems: Vec::new(),
+                            stmts: vec![
+                                Stmt::Expr(
+                                    Expr::Literal(
+                                        Literal::Derived(
+                                            token::Literal::Bool { value: true },
+                                        ),
+                                    ),
+                                ),
+                            ],
                         },
                     },
                 ],
                 r#else: Some(
                     Block {
-                        elems: vec![
-                            Elem::Literal(
-                                token::Literal::Bool { value: true },
+                        stmts: vec![
+                            Stmt::Expr(
+                                Expr::Literal(
+                                    Literal::Derived(
+                                        token::Literal::Bool { value: true },
+                                    ),
+                                ),
                             ),
                         ],
                     },
@@ -368,35 +405,178 @@ fn jsifies_if_expr() {
 }
 
 #[test]
-fn jsifies_elif() {
-    let mut jsify = Jsify::new();
-    let hir = hir::Elif {
-        cond: Box::new(
-            hir::Expr {
-                id: ExprId::new(3),
-                kind: hir::ExprKind::Literal(
-                    token::Literal::Bool { value: true },
+fn jsifies_if_expr_expected_to_be_expr() {
+    let type_table = hashmap! {
+        TypeId::Expr(BodyId::new(0), ExprId::new(0)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Bool)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(1)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Bool)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(2)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Bool)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(3)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Bool)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(4)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Bool)),
+        ),
+        TypeId::Expr(BodyId::new(0), ExprId::new(5)) => TypeConstraint::new(
+            typesys::TypePtr::new(typesys::Type::Prim(ast::PrimType::Bool)),
+        ),
+    }.into();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::If(
+            hir::If {
+                cond: Box::new(
+                    hir::Expr {
+                        id: ExprId::new(1),
+                        kind: hir::ExprKind::Literal(
+                            token::Literal::Bool { value: true },
+                        ),
+                    },
+                ),
+                block: hir::Block {
+                    exprs: vec![
+                        hir::Expr {
+                            id: ExprId::new(2),
+                            kind: hir::ExprKind::Literal(
+                                token::Literal::Bool { value: true },
+                            ),
+                        },
+                    ],
+                },
+                elifs: vec![
+                    hir::Elif {
+                        cond: Box::new(
+                            hir::Expr {
+                                id: ExprId::new(3),
+                                kind: hir::ExprKind::Literal(
+                                    token::Literal::Bool { value: true },
+                                ),
+                            },
+                        ),
+                        block: hir::Block {
+                            exprs: vec![
+                                hir::Expr {
+                                    id: ExprId::new(4),
+                                    kind: hir::ExprKind::Literal(
+                                        token::Literal::Bool { value: true },
+                                    ),
+                                },
+                            ],
+                        },
+                    },
+                ],
+                r#else: Some(
+                    hir::Block {
+                        exprs: vec![
+                            hir::Expr {
+                                id: ExprId::new(5),
+                                kind: hir::ExprKind::Literal(
+                                    token::Literal::Bool { value: true },
+                                ),
+                            },
+                        ],
+                    },
                 ),
             },
         ),
-        block: hir::Block {
-            exprs: Vec::new(),
-        },
     };
-    let vars = Vec::new();
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, true);
 
     assert_eq!(
-        jsify.jsify_elif(&vars, &hir),
-        Elif {
-            cond: Box::new(
-                Elem::Literal(
-                    token::Literal::Bool { value: true },
-                ),
+        stmt_seq,
+        vec![
+            Stmt::VarDef(
+                VarDef {
+                    id: Id::Tmp(0),
+                    init: None,
+                },
             ),
-            block: Block {
-                elems: Vec::new(),
-            },
-        },
+            Stmt::If(
+                If {
+                    cond: Box::new(
+                        Expr::Literal(
+                            Literal::Derived(
+                                token::Literal::Bool { value: true },
+                            ),
+                        ),
+                    ),
+                    block: Block {
+                        stmts: vec![
+                            Stmt::VarBind(
+                                VarBind {
+                                    id: Id::Tmp(0),
+                                    value: Box::new(
+                                        Expr::Literal(
+                                            Literal::Derived(
+                                                token::Literal::Bool { value: true },
+                                            ),
+                                        ),
+                                    ),
+                                },
+                            ),
+                        ],
+                    },
+                    elifs: vec![
+                        Elif {
+                            cond: Box::new(
+                                Expr::Literal(
+                                    Literal::Derived(
+                                        token::Literal::Bool { value: true },
+                                    ),
+                                ),
+                            ),
+                            block: Block {
+                                stmts: vec![
+                                    Stmt::VarBind(
+                                        VarBind {
+                                            id: Id::Tmp(0),
+                                            value: Box::new(
+                                                Expr::Literal(
+                                                    Literal::Derived(
+                                                        token::Literal::Bool { value: true },
+                                                    ),
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            },
+                        },
+                    ],
+                    r#else: Some(
+                        Block {
+                            stmts: vec![
+                                Stmt::VarBind(
+                                    VarBind {
+                                        id: Id::Tmp(0),
+                                        value: Box::new(
+                                            Expr::Literal(
+                                                Literal::Derived(
+                                                    token::Literal::Bool { value: true },
+                                                ),
+                                            ),
+                                        ),
+                                    },
+                                ),
+                            ],
+                        },
+                    ),
+                },
+            ),
+        ].into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(Expr::Id(Id::Tmp(0))),
     );
     assert!(jsify.get_logs().is_empty());
 }

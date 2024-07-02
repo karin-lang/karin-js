@@ -28,31 +28,73 @@ pub struct FnDecl {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Body {
     pub arg_len: usize,
-    pub elems: Vec<Elem>,
+    pub stmts: Vec<Stmt>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Elem {
+pub enum Stmt {
+    Expr(Expr),
     Block(Block),
     VarDef(VarDef),
-    Literal(token::Literal),
+    VarBind(VarBind),
     If(If),
+}
+
+impl Stmt {
+    pub fn expect_expr(self) -> Expr {
+        match self {
+            Stmt::Expr(expr) => expr,
+            _ => panic!("expected expression"),
+        }
+    }
+
+    pub fn expect_expr_or_null(self) -> Expr {
+        match self {
+            Stmt::Expr(expr) => expr,
+            _ => Expr::Literal(Literal::Null),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Expr {
+    Literal(Literal),
+    Id(Id),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
-    pub elems: Vec<Elem>,
+    pub stmts: Vec<Stmt>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Literal {
+    Derived(token::Literal),
+    Undefined,
+    Null,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Id {
+    Var(usize),
+    Tmp(usize),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct VarDef {
-    pub id: VarId,
-    pub init: Option<Box<Elem>>,
+    pub id: Id,
+    pub init: Option<Expr>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct VarBind {
+    pub id: Id,
+    pub value: Box<Expr>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct If {
-    pub cond: Box<Elem>,
+    pub cond: Box<Expr>,
     pub block: Block,
     pub elifs: Vec<Elif>,
     pub r#else: Option<Block>,
@@ -60,6 +102,6 @@ pub struct If {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Elif {
-    pub cond: Box<Elem>,
+    pub cond: Box<Expr>,
     pub block: Block,
 }

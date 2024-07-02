@@ -24,7 +24,7 @@ use karinc::parser::ast::tltype::TopLevelTypeTable;
 use karinc::parser::ast::Ast;
 use karinc::parser::{Parser, ParserHakoContext};
 use karinc::typesys::constraint::lower::TypeConstraintLowering;
-use karinc::typesys::constraint::TypeLog;
+use karinc::typesys::constraint::{TypeConstraintTable, TypeLog};
 
 pub struct Compiler;
 
@@ -53,28 +53,31 @@ impl Compiler {
     }
 
     pub fn jsify(input: &InputTree) -> (Js, HashMap<ModId, Vec<CompilerLog>>) {
-        let (hir, compiler_logs) = Compiler::gen_hir(input);
-        let mut jsify = Jsify::new();
+        let (hir, type_table, compiler_logs) = Compiler::gen_hir(input);
+        let mut jsify = Jsify::new(&type_table);
         let js = jsify.jsify(&hir);
+        println!("{:?}", js);
+        println!("{:?}", jsify.test_stmts);
         (js, compiler_logs)
     }
 
-    pub fn gen_hir(input: &InputTree) -> (Hir, HashMap<ModId, Vec<CompilerLog>>) {
+    pub fn gen_hir(input: &InputTree) -> (Hir, TypeConstraintTable, HashMap<ModId, Vec<CompilerLog>>) {
         let (asts, mut top_level_type_table, mut logs) = Compiler::gen_hir_lowering_input(input);
         let hir = Compiler::hirify(&asts, &mut logs);
         // todo: 型ログを logs に追加する
-        let type_logs = Compiler::check_type(&hir, &mut top_level_type_table);
-        (hir, logs)
+        let (type_table, type_logs) = Compiler::check_type(&hir, &mut top_level_type_table);
+        (hir, type_table, logs)
     }
 
     // Generate HIR modules and type table from input tree.
     pub fn gen_hir_lowering_input(input: &InputTree) -> (Vec<Ast>, TopLevelTypeTable, HashMap<ModId, Vec<CompilerLog>>) {
         let mut logs = HashMap::new();
         let mut asts = Vec::new();
+        let mut last_body_id = 0;
         let mut top_level_type_table = TopLevelTypeTable::new();
         for each_hako in &input.hakos {
             for each_mod in &each_hako.mods {
-                let (ast, compiler_logs) = Compiler::gen_hir_lowering_mod(each_hako, each_mod, &mut top_level_type_table);
+                let (ast, compiler_logs) = Compiler::gen_hir_lowering_mod(each_hako, each_mod, &mut last_body_id, &mut top_level_type_table);
                 logs.insert(ast.mod_id, compiler_logs);
                 asts.push(ast);
             }
@@ -83,7 +86,7 @@ impl Compiler {
     }
 
     // Generate HIR module from module input.
-    pub fn gen_hir_lowering_mod(hako: &InputHako, r#mod: &InputMod, top_level_type_table: &mut TopLevelTypeTable) -> (Ast, Vec<CompilerLog>) {
+    pub fn gen_hir_lowering_mod(hako: &InputHako, r#mod: &InputMod, last_body_id: &mut usize, top_level_type_table: &mut TopLevelTypeTable) -> (Ast, Vec<CompilerLog>) {
         let mut logs = Vec::new();
 
         let lexer = Lexer::new();
@@ -94,7 +97,7 @@ impl Compiler {
         }
 
         let mut hako_context = ParserHakoContext::new(hako.id);
-        let parser = Parser::new(&tokens, &mut hako_context);
+        let parser = Parser::new(&tokens, &mut hako_context, last_body_id);
         let (ast, parser_logs) = parser.parse(r#mod.id, r#mod.path.clone());
         if !parser_logs.is_empty() {
             let parser_logs = &mut parser_logs.into_iter().map(|v| v.into()).collect();
@@ -121,7 +124,7 @@ impl Compiler {
         hir
     }
 
-    pub fn check_type(hir: &Hir, top_level_type_table: &mut TopLevelTypeTable) -> Vec<TypeLog> {
-        TypeConstraintLowering::lower(hir, top_level_type_table).1
+    pub fn check_type(hir: &Hir, top_level_type_table: &mut TopLevelTypeTable) -> (TypeConstraintTable, Vec<TypeLog>) {
+        TypeConstraintLowering::lower(hir, top_level_type_table)
     }
 }
