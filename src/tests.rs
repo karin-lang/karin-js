@@ -1,4 +1,6 @@
 #[cfg(test)]
+mod build;
+#[cfg(test)]
 mod jsify;
 
 use crate::code::Code;
@@ -8,7 +10,6 @@ use crate::{Compiler, Output, OutputFile, OutputFileExt};
 use karinc::{hir::id::*, input::*};
 use maplit::hashmap;
 
-/*
 #[test]
 fn compiles() {
     let input = InputTree {
@@ -52,4 +53,3 @@ fn compiles() {
         },
     );
 }
-*/

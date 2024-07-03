@@ -8,7 +8,8 @@ mod tests;
 
 use std::collections::HashMap;
 
-use crate::code::{Code, build::CodeBuilder};
+use crate::code::Code;
+use crate::code::build::CodeBuilder;
 use crate::js::Js;
 use crate::jsify::Jsify;
 use crate::option::*;
