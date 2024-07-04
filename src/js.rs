@@ -38,6 +38,8 @@ pub enum Stmt {
     VarDef(VarDef),
     VarBind(VarBind),
     If(If),
+    For(For),
+    While(While),
 }
 
 impl Stmt {
@@ -103,5 +105,19 @@ pub struct If {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Elif {
     pub cond: Box<Expr>,
+    pub block: Block,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct For {
+    pub init: Box<Stmt>,
+    pub cond: Expr,
+    pub after: Box<Stmt>,
+    pub block: Block,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct While {
+    pub cond: Expr,
     pub block: Block,
 }

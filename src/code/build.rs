@@ -27,6 +27,8 @@ impl CodeBuilder {
             Stmt::VarDef(def) => self.code_var_def(def),
             Stmt::VarBind(bind) => self.code_var_bind(bind),
             Stmt::If(r#if) => self.code_if(r#if),
+            Stmt::For(_) => unimplemented!(),
+            Stmt::While(r#while) => self.code_while(r#while),
         }
     }
 
@@ -138,5 +140,11 @@ impl CodeBuilder {
             code += &format!("else{else_block}");
         }
         code
+    }
+
+    pub fn code_while(&mut self, r#while: &While) -> String {
+        let cond = self.code_expr(&r#while.cond);
+        let block = self.code_block(&r#while.block);
+        format!("while({cond}){block}")
     }
 }

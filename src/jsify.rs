@@ -167,6 +167,7 @@ impl<'a> Jsify<'a> {
                 StmtResult::new(result)
             },
             hir::ExprKind::If(r#if) => self.jsify_if(body_scope, stmt_seq, expr.id, r#if, expect_expr),
+            hir::ExprKind::For(r#for) => self.jsify_for(body_scope, stmt_seq, expr.id, r#for, expect_expr),
             _ => unimplemented!(),
         };
         stmt_seq.push_previous_stmts(result)
@@ -181,7 +182,7 @@ impl<'a> Jsify<'a> {
         let mut i = 0;
         for expr in &block.exprs {
             i += 1;
-            let new_stmt = self.jsify_expr(body_scope, &mut stmt_seq, expr, false);
+            let new_stmt = self.jsify_expr(body_scope, &mut stmt_seq, expr, true);
             if i == block.exprs.len() {
                 match &last_bind {
                     BlockLastBind::None => stmt_seq.push(new_stmt),
@@ -271,5 +272,50 @@ impl<'a> Jsify<'a> {
         };
         let block = self.jsify_block(body_scope, &elif.block, block_last_bind);
         Elif { cond, block }
+    }
+
+    pub fn jsify_for(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, expr_id: ExprId, r#for: &hir::For, expect_expr: bool) -> StmtResult {
+        let has_value = {
+            let type_id = TypeId::Expr(body_scope.get_body().id, expr_id);
+            let constraint = self.type_table.get(&type_id).expect("unknown expression id: {type_id:?}");
+            *constraint.get_ptr().borrow() != typesys::Type::Prim(ast::PrimType::Void)
+        };
+        let block_last_bind = if expect_expr {
+            if !has_value {
+                unimplemented!("先行文としてfor文、結果文としてnull式を返す");
+            }
+            let tmp_id = body_scope.generate_tmp_var_id();
+            BlockLastBind::LastBind { tmp_id }
+        } else {
+            BlockLastBind::None
+        };
+        match &r#for.kind {
+            hir::ForKind::Endless => {
+                let cond = Expr::Literal(Literal::Derived(token::Literal::Bool { value: true }));
+                let block = self.jsify_block(body_scope, &r#for.block, block_last_bind);
+                let js_while = While { cond, block };
+
+                match block_last_bind {
+                    BlockLastBind::None => {
+                        let result = Stmt::While(js_while);
+                        StmtResult::new(result)
+                    },
+                    BlockLastBind::LastBind { tmp_id } => {
+                        let result = Stmt::Expr(Expr::Id(Id::Tmp(tmp_id)));
+                        let previous = vec![
+                            Stmt::VarDef(
+                                VarDef {
+                                    id: Id::Tmp(tmp_id),
+                                    init: None,
+                                },
+                            ),
+                            Stmt::While(js_while),
+                        ];
+                        StmtResult::new_with_previous(result, previous.into())
+                    },
+                }
+            },
+            _ => unimplemented!(),
+        }
     }
 }
