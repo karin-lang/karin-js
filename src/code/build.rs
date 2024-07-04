@@ -41,10 +41,58 @@ impl CodeBuilder {
         match literal {
             Literal::Derived(derived) => match derived {
                 token::Literal::Bool { value } => value.to_string(),
+                token::Literal::Int { base, int_digits, r#type: _ } => {
+                    let base_code = self.code_base(base);
+                    format!("{base_code}{int_digits}")
+                },
+                token::Literal::Float { base, int_digits, fraction_digits, r#type: _ } => {
+                    let base_code = self.code_base(base);
+                    format!("{base_code}{int_digits}.{fraction_digits}")
+                },
+                token::Literal::Char { value } => match value {
+                    Some(value) => {
+                        let value_code = self.code_escseq(&value.to_string());
+                        format!("'{value_code}'")
+                    },
+                    None => self.code_literal(&Literal::Null),
+                },
+                token::Literal::Str { value } => {
+                    let value_code = self.code_escseq(value);
+                    format!("'{value_code}'")
+                },
                 _ => unimplemented!(),
             },
-            _ => unimplemented!(),
+            Literal::Undefined => "undefined".to_string(),
+            Literal::Null => "null".to_string(),
         }
+    }
+
+    pub fn code_base(&mut self, base: &token::Base) -> String {
+        let code = match base {
+            token::Base::Bin => "0b",
+            token::Base::Oct => "0o",
+            token::Base::Dec => "",
+            token::Base::Hex => "0x",
+        };
+        code.to_string()
+    }
+
+    pub fn code_escseq(&mut self, value: &String) -> String {
+        let mut code = String::new();
+        for ch in value.chars() {
+            let new_ch = match ch {
+                '\\' => r"\\",
+                '\'' => r"\'",
+                '"' => "\\\"",
+                '\0' => r"\0",
+                '\n' => r"\n",
+                '\r' => r"\r",
+                '\t' => r"\t",
+                _ => &ch.to_string(),
+            };
+            code += new_ch;
+        }
+        code
     }
 
     pub fn code_id(&mut self, id: &Id) -> String {
