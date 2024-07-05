@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use crate::*;
+use crate::js::*;
 
-use js::*;
-use karinc::{hir, lexer::token, parser::ast, typesys};
+use karinc::lexer::token;
+use karinc::hir;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum JsifyLog {}
@@ -166,8 +167,8 @@ impl<'a> Jsify<'a> {
                 let result = Stmt::VarBind(js_bind);
                 StmtResult::new(result)
             },
-            hir::ExprKind::If(r#if) => self.jsify_if(body_scope, stmt_seq, expr.id, r#if, expect_expr),
-            hir::ExprKind::For(r#for) => self.jsify_for(body_scope, stmt_seq, expr.id, r#for, expect_expr),
+            hir::ExprKind::If(r#if) => self.jsify_if(body_scope, stmt_seq, r#if, expect_expr),
+            hir::ExprKind::For(r#for) => self.jsify_for(body_scope, stmt_seq, r#for, expect_expr),
             _ => unimplemented!(),
         };
         stmt_seq.push_previous_stmts(result)
@@ -220,20 +221,12 @@ impl<'a> Jsify<'a> {
         VarBind { id, value: Box::new(value) }
     }
 
-    pub fn jsify_if(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, expr_id: ExprId, r#if: &hir::If, expect_expr: bool) -> StmtResult {
-        let has_value = {
-            let type_id = TypeId::Expr(body_scope.get_body().id, expr_id);
-            let constraint = self.type_table.get(&type_id).expect("unknown expression id: {type_id:?}");
-            *constraint.get_ptr().borrow() != typesys::Type::Prim(ast::PrimType::Void)
-        };
+    pub fn jsify_if(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, r#if: &hir::If, expect_expr: bool) -> StmtResult {
         let cond = {
             let stmt = self.jsify_expr(body_scope, stmt_seq, &r#if.cond, true);
             Box::new(stmt.expect_expr())
         };
         let block_last_bind = if expect_expr {
-            if !has_value {
-                unimplemented!("先行文としてif文、結果文としてnull式を返す");
-            }
             let tmp_id = body_scope.generate_tmp_var_id();
             BlockLastBind::LastBind { tmp_id }
         } else {
@@ -274,16 +267,8 @@ impl<'a> Jsify<'a> {
         Elif { cond, block }
     }
 
-    pub fn jsify_for(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, expr_id: ExprId, r#for: &hir::For, expect_expr: bool) -> StmtResult {
-        let has_value = {
-            let type_id = TypeId::Expr(body_scope.get_body().id, expr_id);
-            let constraint = self.type_table.get(&type_id).expect("unknown expression id: {type_id:?}");
-            *constraint.get_ptr().borrow() != typesys::Type::Prim(ast::PrimType::Void)
-        };
-        let block_last_bind = if expect_expr {
-            if !has_value {
-                unimplemented!("先行文としてfor文、結果文としてnull式を返す");
-            }
+    pub fn jsify_for(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, r#for: &hir::For, expect_expr: bool) -> StmtResult {
+        let block_last_bind: BlockLastBind = if expect_expr {
             let tmp_id = body_scope.generate_tmp_var_id();
             BlockLastBind::LastBind { tmp_id }
         } else {
@@ -315,7 +300,32 @@ impl<'a> Jsify<'a> {
                     },
                 }
             },
-            _ => unimplemented!(),
+            hir::ForKind::Cond { cond } => {
+                let cond = self.jsify_expr(body_scope, stmt_seq, cond, true).expect_expr();
+                let block = self.jsify_block(body_scope, &r#for.block, block_last_bind);
+                let js_while = While { cond, block };
+
+                match block_last_bind {
+                    BlockLastBind::None => {
+                        let result = Stmt::While(js_while);
+                        StmtResult::new(result)
+                    },
+                    BlockLastBind::LastBind { tmp_id } => {
+                        let result = Stmt::Expr(Expr::Id(Id::Tmp(tmp_id)));
+                        let previous = vec![
+                            Stmt::VarDef(
+                                VarDef {
+                                    id: Id::Tmp(tmp_id),
+                                    init: None,
+                                },
+                            ),
+                            Stmt::While(js_while),
+                        ];
+                        StmtResult::new_with_previous(result, previous.into())
+                    },
+                }
+            },
+            hir::ForKind::Range { index: _, range: _ } => unimplemented!(),
         }
     }
 }
