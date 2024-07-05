@@ -47,9 +47,9 @@ impl CodeBuilder {
                     let base_code = self.code_base(base);
                     format!("{base_code}{int_digits}")
                 },
-                token::Literal::Float { base, int_digits, fraction_digits, r#type: _ } => {
-                    let base_code = self.code_base(base);
-                    format!("{base_code}{int_digits}.{fraction_digits}")
+                token::Literal::Float { digits, r#type: _ } => match digits {
+                    Some(digits) => format!("{}.{}", digits.int, digits.fraction),
+                    None => self.code_expr(&Expr::Literal(Literal::Null)),
                 },
                 token::Literal::Char { value } => match value {
                     Some(value) => {
