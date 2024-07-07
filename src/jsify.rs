@@ -84,6 +84,17 @@ impl StmtResult {
     pub fn new_with_previous(result: Stmt, previous: StmtSeq) -> StmtResult {
         StmtResult { result, previous: Some(previous) }
     }
+
+    // 結果式として null 式が要求された場合は引数 stmt を先行式とする
+    // Karin における式を JS における文に変換する際、式であることを要求された場合に利用する
+    pub fn new_or_null(stmt: Stmt, expect_null: bool) -> StmtResult {
+        if expect_null {
+            let result = Stmt::Expr(Expr::Literal(Literal::Null));
+            StmtResult::new_with_previous(result, vec![stmt].into())
+        } else {
+            StmtResult::new(stmt)
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -145,13 +156,14 @@ impl<'a> Jsify<'a> {
 
     // HIR の式を JSify して、先行文のみをステートメントシーケンスに追加する
     // 呼び出し元で結果文を利用できるように結果文を返す
+    // 注: Karin における式を JS における文に変換する場合、引数 expect_expr に応じて先行式を生成すること
+    //     (必要に応じて StmtResult::new_or_null() 関数を利用する)
     pub fn jsify_expr(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, expr: &hir::Expr, expect_expr: bool) -> Stmt {
         let result = match &expr.kind {
             hir::ExprKind::Block(block) => {
                 let js_block = self.jsify_block(body_scope, block, BlockLastBind::None);
-                let result = Stmt::Block(js_block);
-                // todo: support expect_expr=false
-                StmtResult::new(result)
+                let stmt = Stmt::Block(js_block);
+                StmtResult::new_or_null(stmt, expect_expr)
             },
             hir::ExprKind::Literal(literal) => {
                 let js_literal = self.jsify_literal(literal);
@@ -161,21 +173,18 @@ impl<'a> Jsify<'a> {
             hir::ExprKind::Ret(ret) => {
                 let js_value = self.jsify_expr(body_scope, stmt_seq, &ret.value, true).expect_expr();
                 let js_ret = Ret { value: js_value };
-                let result = Stmt::Ret(js_ret);
-                // todo: support expect_expr=false
-                StmtResult::new(result)
+                let stmt = Stmt::Ret(js_ret);
+                StmtResult::new_or_null(stmt, expect_expr)
             },
             hir::ExprKind::VarDef(var_id) => {
                 let js_def = self.jsify_var_def(body_scope, stmt_seq, *var_id);
-                let result = Stmt::VarDef(js_def);
-                // todo: support expect_expr=false
-                StmtResult::new(result)
+                let stmt = Stmt::VarDef(js_def);
+                StmtResult::new_or_null(stmt, expect_expr)
             },
             hir::ExprKind::VarBind(bind) => {
                 let js_bind = self.jsify_var_bind(body_scope, stmt_seq, bind);
-                let result = Stmt::VarBind(js_bind);
-                // todo: support expect_expr=false
-                StmtResult::new(result)
+                let stmt = Stmt::VarBind(js_bind);
+                StmtResult::new_or_null(stmt, expect_expr)
             },
             hir::ExprKind::If(r#if) => self.jsify_if(body_scope, stmt_seq, r#if, expect_expr),
             hir::ExprKind::For(r#for) => self.jsify_for(body_scope, stmt_seq, r#for, expect_expr),

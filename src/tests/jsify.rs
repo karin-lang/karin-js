@@ -22,6 +22,51 @@ fn generate_body(id: usize) -> hir::Body {
 }
 
 #[test]
+fn jsifies_into_stmt_with_expr_expectation() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::Ret(
+            hir::Ret {
+                value: Box::new(
+                    hir::Expr {
+                        id: ExprId::new(0),
+                        kind: hir::ExprKind::Literal(
+                            token::Literal::Bool { value: true },
+                        ),
+                    },
+                ),
+            },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, true);
+
+    assert_eq!(
+        stmt_seq,
+        vec![
+            Stmt::Ret(
+                Ret {
+                    value: Expr::Literal(
+                        Literal::Derived(
+                            token::Literal::Bool { value: true },
+                        ),
+                    ),
+                },
+            ),
+        ].into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(Expr::Literal(Literal::Null)),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
 fn jsifies_literal_expr() {
     let type_table = TypeConstraintTable::new();
     let mut jsify = Jsify::new(&type_table);
