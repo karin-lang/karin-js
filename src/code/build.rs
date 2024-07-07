@@ -24,6 +24,7 @@ impl CodeBuilder {
         match stmt {
             Stmt::Expr(expr) => self.code_expr(expr),
             Stmt::Block(block) => self.code_block(block),
+            Stmt::Ret(ret) => self.code_ret(ret),
             Stmt::VarDef(def) => self.code_var_def(def),
             Stmt::VarBind(bind) => self.code_var_bind(bind),
             Stmt::If(r#if) => self.code_if(r#if),
@@ -109,7 +110,12 @@ impl CodeBuilder {
         format!("{{{}}}", stmts.join(";"))
     }
 
-    fn code_var_def(&mut self, def: &VarDef) -> String {
+    pub fn code_ret(&mut self, ret: &Ret) -> String {
+        let value = self.code_expr(&ret.value);
+        format!("return {value}")
+    }
+
+    pub fn code_var_def(&mut self, def: &VarDef) -> String {
         let id = self.code_id(&def.id);
         let mut code = format!("let {id}");
         if let Some(init) = &def.init {
@@ -119,7 +125,7 @@ impl CodeBuilder {
         code
     }
 
-    fn code_var_bind(&mut self, bind: &VarBind) -> String {
+    pub fn code_var_bind(&mut self, bind: &VarBind) -> String {
         let id = self.code_id(&bind.id);
         let value = self.code_expr(&bind.value);
         format!("{id}={value}")

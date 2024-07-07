@@ -147,24 +147,34 @@ impl<'a> Jsify<'a> {
     // 呼び出し元で結果文を利用できるように結果文を返す
     pub fn jsify_expr(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, expr: &hir::Expr, expect_expr: bool) -> Stmt {
         let result = match &expr.kind {
+            hir::ExprKind::Block(block) => {
+                let js_block = self.jsify_block(body_scope, block, BlockLastBind::None);
+                let result = Stmt::Block(js_block);
+                // todo: support expect_expr=false
+                StmtResult::new(result)
+            },
             hir::ExprKind::Literal(literal) => {
                 let js_literal = self.jsify_literal(literal);
                 let result = Stmt::Expr(Expr::Literal(js_literal));
                 StmtResult::new(result)
             },
-            hir::ExprKind::Block(block) => {
-                let js_block = self.jsify_block(body_scope, block, BlockLastBind::None);
-                let result = Stmt::Block(js_block);
+            hir::ExprKind::Ret(ret) => {
+                let js_value = self.jsify_expr(body_scope, stmt_seq, &ret.value, true).expect_expr();
+                let js_ret = Ret { value: js_value };
+                let result = Stmt::Ret(js_ret);
+                // todo: support expect_expr=false
                 StmtResult::new(result)
             },
             hir::ExprKind::VarDef(var_id) => {
                 let js_def = self.jsify_var_def(body_scope, stmt_seq, *var_id);
                 let result = Stmt::VarDef(js_def);
+                // todo: support expect_expr=false
                 StmtResult::new(result)
             },
             hir::ExprKind::VarBind(bind) => {
                 let js_bind = self.jsify_var_bind(body_scope, stmt_seq, bind);
                 let result = Stmt::VarBind(js_bind);
+                // todo: support expect_expr=false
                 StmtResult::new(result)
             },
             hir::ExprKind::If(r#if) => self.jsify_if(body_scope, stmt_seq, r#if, expect_expr),

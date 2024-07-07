@@ -35,6 +35,7 @@ pub struct Body {
 pub enum Stmt {
     Expr(Expr),
     Block(Block),
+    Ret(Ret),
     VarDef(VarDef),
     VarBind(VarBind),
     If(If),
@@ -59,14 +60,19 @@ impl Stmt {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Expr {
-    Literal(Literal),
-    Id(Id),
+pub struct Block {
+    pub stmts: Vec<Stmt>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Block {
-    pub stmts: Vec<Stmt>,
+pub struct Ret {
+    pub value: Expr,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Expr {
+    Literal(Literal),
+    Id(Id),
 }
 
 #[derive(Clone, Debug, PartialEq)]
