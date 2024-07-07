@@ -12,7 +12,7 @@ impl CodeBuilder {
     pub fn code_item(&mut self, path: &Path, item: &Item) -> String {
         match &item.kind {
             ItemKind::FnDecl(decl) => {
-                let name = format!("f${}", path.segments.join("$"));
+                let name = format!("g${}", path.segments.join("$"));
                 let args: Vec<String> = (0..decl.body.arg_len).map(|v| format!("a${v}")).collect();
                 let stmts: Vec<String> = decl.body.stmts.iter().map(|stmt| self.code_stmt(stmt)).collect();
                 format!("function {}({}){{{}}}", name, args.join(","), stmts.join(";"))
@@ -37,12 +37,14 @@ impl CodeBuilder {
         match expr {
             Expr::Literal(literal) => self.code_literal(literal),
             Expr::Id(id) => self.code_id(id),
+            Expr::Path(path) => self.code_path(path),
         }
     }
 
     pub fn code_literal(&mut self, literal: &Literal) -> String {
         match literal {
             Literal::Derived(derived) => match derived {
+                token::Literal::Void => "void".to_string(),
                 token::Literal::Bool { value } => value.to_string(),
                 token::Literal::Int { base, int_digits, r#type: _ } => {
                     let base_code = self.code_base(base);
@@ -103,6 +105,11 @@ impl CodeBuilder {
             Id::Var(id) => format!("v${id}"),
             Id::Tmp(id) => format!("t${id}"),
         }
+    }
+
+    pub fn code_path(&mut self, path: &Path) -> String {
+        let segments = path.segments.join("$");
+        format!("g${segments}")
     }
 
     pub fn code_block(&mut self, block: &Block) -> String {

@@ -170,6 +170,10 @@ impl<'a> Jsify<'a> {
                 let result = Stmt::Expr(Expr::Literal(js_literal));
                 StmtResult::new(result)
             },
+            hir::ExprKind::TopLevelRef(_, path) => {
+                let result = Stmt::Expr(Expr::Path(path.clone()));
+                StmtResult::new(result)
+            },
             hir::ExprKind::Ret(ret) => {
                 let js_value = self.jsify_expr(body_scope, stmt_seq, &ret.value, true).expect_expr();
                 let js_ret = Ret { value: js_value };

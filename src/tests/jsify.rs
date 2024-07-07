@@ -67,38 +67,6 @@ fn jsifies_into_stmt_with_expr_expectation() {
 }
 
 #[test]
-fn jsifies_literal_expr() {
-    let type_table = TypeConstraintTable::new();
-    let mut jsify = Jsify::new(&type_table);
-    let hir = hir::Expr {
-        id: ExprId::new(0),
-        kind: hir::ExprKind::Literal(
-            token::Literal::Bool { value: true },
-        ),
-    };
-    let body = generate_body(0);
-    let mut body_scope = BodyScope::new(&body);
-    let mut stmt_seq = StmtSeq::new();
-    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
-
-    assert_eq!(
-        stmt_seq,
-        Vec::new().into(),
-    );
-    assert_eq!(
-        result,
-        Stmt::Expr(
-            Expr::Literal(
-                Literal::Derived(
-                    token::Literal::Bool { value: true },
-                ),
-            ),
-        ),
-    );
-    assert!(jsify.get_logs().is_empty());
-}
-
-#[test]
 fn jsifies_block_expr() {
     let type_table = TypeConstraintTable::new();
     let mut jsify = Jsify::new(&type_table);
@@ -194,6 +162,62 @@ fn jsifies_block_with_last_bind() {
                 ),
             ],
         },
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_literal_expr() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::Literal(
+            token::Literal::Bool { value: true },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(
+            Expr::Literal(
+                Literal::Derived(
+                    token::Literal::Bool { value: true },
+                ),
+            ),
+        ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_top_level_expr() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::TopLevelRef(TopLevelId::Item(ItemId::new(0, 0)), "seg1::seg2".into()),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, true);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(Expr::Path("seg1::seg2".into())),
     );
     assert!(jsify.get_logs().is_empty());
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use karinc::lexer::token;
-use karinc::parser::ast;
+use karinc::parser::ast::{self, Path};
 use karinc::hir::id::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -73,6 +73,7 @@ pub struct Ret {
 pub enum Expr {
     Literal(Literal),
     Id(Id),
+    Path(Path),
 }
 
 #[derive(Clone, Debug, PartialEq)]

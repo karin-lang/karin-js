@@ -42,7 +42,7 @@ fn compiles() {
                     ext: OutputFileExt::Js,
                     source: Some(
                         Code {
-                            source: "function f$my_hako$my_mod$f(a$0,a$1){}".to_string(),
+                            source: "function g$my_hako$my_mod$f(a$0,a$1){}".to_string(),
                         },
                     ),
                 },
