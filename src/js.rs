@@ -85,6 +85,7 @@ pub enum Literal {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Id {
+    FormalArg(usize),
     Var(usize),
     Tmp(usize),
 }

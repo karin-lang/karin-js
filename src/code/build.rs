@@ -102,6 +102,7 @@ impl CodeBuilder {
 
     pub fn code_id(&mut self, id: &Id) -> String {
         match id {
+            Id::FormalArg(id) => format!("a${id}"),
             Id::Var(id) => format!("v${id}"),
             Id::Tmp(id) => format!("t${id}"),
         }

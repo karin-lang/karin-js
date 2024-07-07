@@ -174,6 +174,14 @@ impl<'a> Jsify<'a> {
                 let result = Stmt::Expr(Expr::Path(path.clone()));
                 StmtResult::new(result)
             },
+            hir::ExprKind::LocalRef(local_id) => {
+                let id = match local_id {
+                    LocalId::FormalArg(formal_arg_id) => Id::FormalArg(formal_arg_id.into_usize()),
+                    LocalId::Var(var_id) => Id::Var(var_id.into_usize()),
+                };
+                let result = Stmt::Expr(Expr::Id(id));
+                StmtResult::new(result)
+            },
             hir::ExprKind::Ret(ret) => {
                 let js_value = self.jsify_expr(body_scope, stmt_seq, &ret.value, true).expect_expr();
                 let js_ret = Ret { value: js_value };
