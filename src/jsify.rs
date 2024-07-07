@@ -188,6 +188,10 @@ impl<'a> Jsify<'a> {
             },
             hir::ExprKind::If(r#if) => self.jsify_if(body_scope, stmt_seq, r#if, expect_expr),
             hir::ExprKind::For(r#for) => self.jsify_for(body_scope, stmt_seq, r#for, expect_expr),
+            hir::ExprKind::Unknown => {
+                let result = Stmt::Expr(Expr::Literal(Literal::Null));
+                StmtResult::new(result)
+            },
             _ => unimplemented!(),
         };
         stmt_seq.push_previous_stmts(result)
