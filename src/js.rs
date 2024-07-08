@@ -74,6 +74,7 @@ pub enum Expr {
     Literal(Literal),
     Id(Id),
     Path(Path),
+    FnCall(FnCall),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -88,6 +89,17 @@ pub enum Id {
     FormalArg(usize),
     Var(usize),
     Tmp(usize),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FnCall {
+    pub path: Path,
+    pub args: Vec<ActualArg>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ActualArg {
+    pub expr: Expr,
 }
 
 #[derive(Clone, Debug, PartialEq)]

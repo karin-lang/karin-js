@@ -232,7 +232,7 @@ fn jsifies_ret_expr() {
             hir::Ret {
                 value: Box::new(
                     hir::Expr {
-                        id: ExprId::new(0),
+                        id: ExprId::new(1),
                         kind: hir::ExprKind::Literal(
                             token::Literal::Bool { value: true },
                         ),
@@ -261,6 +261,103 @@ fn jsifies_ret_expr() {
                 ),
             },
         ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_fn_call_expr() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::FnCall(
+            hir::FnCall {
+                r#fn: Some((ItemId::new(0, 0), "seg::f".into())),
+                args: vec![
+                    hir::ActualArg {
+                        expr: hir::Expr {
+                            id: ExprId::new(1),
+                            kind: hir::ExprKind::Literal(
+                                token::Literal::Bool { value: true },
+                            ),
+                        },
+                    },
+                    hir::ActualArg {
+                        expr: hir::Expr {
+                            id: ExprId::new(2),
+                            kind: hir::ExprKind::Literal(
+                                token::Literal::Bool { value: true },
+                            ),
+                        },
+                    },
+                ],
+            },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(
+            Expr::FnCall(
+                FnCall {
+                    path: "seg::f".into(),
+                    args: vec![
+                        ActualArg {
+                            expr: Expr::Literal(
+                                Literal::Derived(
+                                    token::Literal::Bool { value: true },
+                                ),
+                            ),
+                        },
+                        ActualArg {
+                            expr: Expr::Literal(
+                                Literal::Derived(
+                                    token::Literal::Bool { value: true },
+                                ),
+                            ),
+                        },
+                    ],
+                },
+            ),
+        ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_fn_call_without_id() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::FnCall(
+            hir::FnCall {
+                r#fn: None,
+                args: Vec::new(),
+            },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(Expr::Literal(Literal::Null)),
     );
     assert!(jsify.get_logs().is_empty());
 }

@@ -38,6 +38,7 @@ impl CodeBuilder {
             Expr::Literal(literal) => self.code_literal(literal),
             Expr::Id(id) => self.code_id(id),
             Expr::Path(path) => self.code_path(path),
+            Expr::FnCall(call) => self.code_fn_call(call),
         }
     }
 
@@ -111,6 +112,12 @@ impl CodeBuilder {
     pub fn code_path(&mut self, path: &Path) -> String {
         let segments = path.segments.join("$");
         format!("g${segments}")
+    }
+
+    pub fn code_fn_call(&mut self, call: &FnCall) -> String {
+        let path = self.code_path(&call.path);
+        let args: Vec<String> = call.args.iter().map(|arg| self.code_expr(&arg.expr)).collect();
+        format!("{path}({})", args.join(","))
     }
 
     pub fn code_block(&mut self, block: &Block) -> String {

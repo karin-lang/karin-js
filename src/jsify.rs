@@ -188,6 +188,12 @@ impl<'a> Jsify<'a> {
                 let stmt = Stmt::Ret(js_ret);
                 StmtResult::new_or_null(stmt, expect_expr)
             },
+            hir::ExprKind::FnCall(call) => {
+                let stmt = self.jsify_call(body_scope, stmt_seq, call)
+                    .map(|js_call| Stmt::Expr(Expr::FnCall(js_call)))
+                    .unwrap_or(Stmt::Expr(Expr::Literal(Literal::Null)));
+                StmtResult::new_or_null(stmt, expect_expr)
+            },
             hir::ExprKind::VarDef(var_id) => {
                 let js_def = self.jsify_var_def(body_scope, stmt_seq, *var_id);
                 let stmt = Stmt::VarDef(js_def);
@@ -204,7 +210,6 @@ impl<'a> Jsify<'a> {
                 let result = Stmt::Expr(Expr::Literal(Literal::Null));
                 StmtResult::new(result)
             },
-            _ => unimplemented!(),
         };
         stmt_seq.push_previous_stmts(result)
     }
@@ -234,6 +239,23 @@ impl<'a> Jsify<'a> {
             }
         }
         Block { stmts: stmt_seq.into() }
+    }
+
+    pub fn jsify_call(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, call: &hir::FnCall) -> Option<FnCall> {
+        match &call.r#fn {
+            Some(item_id) => {
+                let (_, path) = item_id;
+                let args = call.args
+                    .iter()
+                    .map(|arg| {
+                        let expr = self.jsify_expr(body_scope, stmt_seq, &arg.expr, true).expect_expr();
+                        ActualArg { expr }
+                    }).collect();
+                let js_call = FnCall { path: path.clone(), args };
+                Some(js_call)
+            },
+            None => None
+        }
     }
 
     pub fn jsify_var_def(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, var_id: VarId) -> VarDef {
