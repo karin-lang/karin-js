@@ -157,7 +157,7 @@ impl<'a> Jsify<'a> {
     // HIR の式を JSify して、先行文のみをステートメントシーケンスに追加する
     // 呼び出し元で結果文を利用できるように結果文を返す
     // 注: Karin における式を JS における文に変換する場合、引数 expect_expr に応じて先行式を生成すること
-    //     (必要に応じて StmtResult::new_or_null() 関数を利用する)
+    //     ※必要に応じて StmtResult::new_or_null() 関数を利用する
     pub fn jsify_expr(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, expr: &hir::Expr, expect_expr: bool) -> Stmt {
         let result = match &expr.kind {
             hir::ExprKind::Block(block) => {
@@ -192,7 +192,7 @@ impl<'a> Jsify<'a> {
                 let stmt = self.jsify_call(body_scope, stmt_seq, call)
                     .map(|js_call| Stmt::Expr(Expr::FnCall(js_call)))
                     .unwrap_or(Stmt::Expr(Expr::Literal(Literal::Null)));
-                StmtResult::new_or_null(stmt, expect_expr)
+                StmtResult::new(stmt)
             },
             hir::ExprKind::VarDef(var_id) => {
                 let js_def = self.jsify_var_def(body_scope, stmt_seq, *var_id);
