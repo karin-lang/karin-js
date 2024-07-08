@@ -789,3 +789,95 @@ fn jsifies_if_expr_expected_to_be_expr() {
     );
     assert!(jsify.get_logs().is_empty());
 }
+
+#[test]
+fn jsifies_endless_for_expr() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::For(
+            hir::For {
+                kind: hir::ForKind::Endless,
+                block: hir::Block {
+                    exprs: vec![
+                        hir::Expr {
+                            id: ExprId::new(1),
+                            kind: hir::ExprKind::Literal(
+                                token::Literal::Bool { value: true },
+                            ),
+                        },
+                    ],
+                },
+            },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::While(
+            While {
+                cond: Expr::Literal(Literal::Derived(token::Literal::Bool { value: true })),
+                block: Block {
+                    stmts: vec![
+                        Stmt::Expr(Expr::Literal(Literal::Derived(token::Literal::Bool { value: true }))),
+                    ],
+                },
+            },
+        ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_cond_for() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::For(
+            hir::For {
+                kind: hir::ForKind::Cond {
+                    cond: Box::new(
+                        hir::Expr {
+                            id: ExprId::new(1),
+                            kind: hir::ExprKind::Literal(token::Literal::Bool { value: false }),
+                        },
+                    ),
+                },
+                block: hir::Block {
+                    exprs: Vec::new(),
+                },
+            },
+        ),
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::While(
+            While {
+                cond: Expr::Literal(Literal::Derived(token::Literal::Bool { value: false })),
+                block: Block {
+                    stmts: Vec::new(),
+                },
+            },
+        ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
