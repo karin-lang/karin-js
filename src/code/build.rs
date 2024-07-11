@@ -1,4 +1,4 @@
-use karinc::{lexer::token, parser::ast::Path};
+use karinc::{lexer::token, parser::ast::{self, Path}};
 
 use crate::js::*;
 
@@ -35,10 +35,34 @@ impl CodeBuilder {
 
     pub fn code_expr(&mut self, expr: &Expr) -> String {
         match expr {
+            Expr::Operation(operation) => self.code_operation(operation),
             Expr::Literal(literal) => self.code_literal(literal),
             Expr::Id(id) => self.code_id(id),
             Expr::Path(path) => self.code_path(path),
             Expr::FnCall(call) => self.code_fn_call(call),
+        }
+    }
+
+    pub fn code_operation(&mut self, operation: &Operation) -> String {
+        match operation {
+            Operation::Unary { operator, term } => {
+                let term_code = self.code_expr(term);
+                match operator {
+                    ast::UnaryOperator::Not => format!("(!{term_code})"),
+                    ast::UnaryOperator::Void => self.code_expr(&Expr::Literal(Literal::Null)),
+                }
+            },
+            Operation::Binary { operator, left_term, right_term } => {
+                let left_term_code = self.code_expr(left_term);
+                let right_term_code = self.code_expr(right_term);
+                let operator_code = match operator {
+                    ast::BinaryOperator::Add => "+",
+                    ast::BinaryOperator::Sub => "-",
+                    ast::BinaryOperator::Mul => "*",
+                    ast::BinaryOperator::Div => "/",
+                };
+                format!("({left_term_code}{operator_code}{right_term_code})")
+            },
         }
     }
 

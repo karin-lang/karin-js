@@ -71,10 +71,17 @@ pub struct Ret {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
+    Operation(Box<Operation>),
     Literal(Literal),
     Id(Id),
     Path(Path),
     FnCall(FnCall),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Operation {
+    Unary { operator: ast::UnaryOperator, term: Expr },
+    Binary { operator: ast::BinaryOperator, left_term: Expr, right_term: Expr },
 }
 
 #[derive(Clone, Debug, PartialEq)]

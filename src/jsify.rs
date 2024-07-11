@@ -160,6 +160,11 @@ impl<'a> Jsify<'a> {
     //     ※必要に応じて StmtResult::new_or_null() 関数を利用する
     pub fn jsify_expr(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, expr: &hir::Expr, expect_expr: bool) -> Stmt {
         let result = match &expr.kind {
+            hir::ExprKind::Operation(operation) => {
+                let js_operation = self.jsify_operation(body_scope, stmt_seq, operation);
+                let result = Stmt::Expr(Expr::Operation(Box::new(js_operation)));
+                StmtResult::new(result)
+            },
             hir::ExprKind::Block(block) => {
                 let js_block = self.jsify_block(body_scope, block, BlockLastBind::None);
                 let stmt = Stmt::Block(js_block);
@@ -212,6 +217,21 @@ impl<'a> Jsify<'a> {
             },
         };
         stmt_seq.push_previous_stmts(result)
+    }
+
+    pub fn jsify_operation(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, operation: &hir::Operation) -> Operation {
+        println!("{operation:?}");
+        match operation {
+            hir::Operation::Unary { operator, term } => Operation::Unary {
+                operator: *operator,
+                term: self.jsify_expr(body_scope, stmt_seq, term, true).expect_expr(),
+            },
+            hir::Operation::Binary { operator, left_term, right_term } => Operation::Binary {
+                operator: *operator,
+                left_term: self.jsify_expr(body_scope, stmt_seq, left_term, true).expect_expr(),
+                right_term: self.jsify_expr(body_scope, stmt_seq, right_term, true).expect_expr(),
+            },
+        }
     }
 
     pub fn jsify_literal(&mut self, literal: &token::Literal) -> Literal {
