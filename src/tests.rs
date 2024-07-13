@@ -28,7 +28,7 @@ fn compiles() {
         ],
     };
     let options = CompilerOptions {
-        root_source_name: "index".to_string(),
+        output_root_name: "index".to_string(),
         bundles: true,
         module: JsModule::Es,
     };

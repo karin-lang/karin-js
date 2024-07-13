@@ -220,7 +220,6 @@ impl<'a> Jsify<'a> {
     }
 
     pub fn jsify_operation(&mut self, body_scope: &mut BodyScope, stmt_seq: &mut StmtSeq, operation: &hir::Operation) -> Operation {
-        println!("{operation:?}");
         match operation {
             hir::Operation::Unary { operator, term } => Operation::Unary {
                 operator: *operator,
