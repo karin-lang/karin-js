@@ -4,7 +4,7 @@ mod build;
 mod jsify;
 
 use crate::code::Code;
-use crate::option::{CompilerOptions, JsModule};
+use crate::option::CompilerOptions;
 use crate::{Compiler, Output, OutputFile, OutputFileExt};
 
 use karinc::{hir::id::*, input::*};
@@ -29,24 +29,20 @@ fn compiles() {
     };
     let options = CompilerOptions {
         output_root_name: "index".to_string(),
-        bundles: true,
-        module: JsModule::Es,
     };
     let output = Compiler::compile(&input, &options);
     assert_eq!(
         output,
         Output {
-            files: vec![
-                OutputFile {
-                    name: "index".to_string(),
-                    ext: OutputFileExt::Js,
-                    source: Some(
-                        Code {
-                            source: "function g$my_hako$my_mod$f(a$0,a$1){}".to_string(),
-                        },
-                    ),
-                },
-            ],
+            file: OutputFile {
+                name: "index".to_string(),
+                ext: OutputFileExt::Js,
+                source: Some(
+                    Code {
+                        source: "function g$my_hako$my_mod$f(a$0,a$1){}".to_string(),
+                    },
+                ),
+            },
             logs: hashmap! {
                 ModId::new(0, 0) => Vec::new(),
             },

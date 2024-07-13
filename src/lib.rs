@@ -32,25 +32,18 @@ pub struct Compiler;
 impl Compiler {
     pub fn compile(input: &InputTree, options: &CompilerOptions) -> Output {
         let (js, logs) = Compiler::jsify(input);
-        if options.bundles {
-            let mut code_builder = CodeBuilder::new();
-            let mut code = Code::new();
-            for (each_path, each_item) in &js.items {
-                let new_item = code_builder.code_item(each_path, each_item);
-                code.append(&new_item);
-            }
-            let file = OutputFile {
-                name: options.output_root_name.clone(),
-                ext: OutputFileExt::Js,
-                source: Some(code),
-            };
-            Output {
-                files: vec![file],
-                logs,
-            }
-        } else {
-            unimplemented!();
+        let mut code_builder = CodeBuilder::new();
+        let mut code = Code::new();
+        for (each_path, each_item) in &js.items {
+            let new_item = code_builder.code_item(each_path, each_item);
+            code.append(&new_item);
         }
+        let file = OutputFile {
+            name: options.output_root_name.clone(),
+            ext: OutputFileExt::Js,
+            source: Some(code),
+        };
+        Output { file, logs }
     }
 
     pub fn jsify(input: &InputTree) -> (Js, HashMap<ModId, Vec<CompilerLog>>) {

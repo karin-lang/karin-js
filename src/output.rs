@@ -7,7 +7,7 @@ use karinc::hir::id::ModId;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Output {
-    pub files: Vec<OutputFile>,
+    pub file: OutputFile,
     pub logs: HashMap<ModId, Vec<CompilerLog>>,
 }
 
