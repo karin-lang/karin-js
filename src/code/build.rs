@@ -69,7 +69,7 @@ impl CodeBuilder {
     pub fn code_literal(&mut self, literal: &Literal) -> String {
         match literal {
             Literal::Derived(derived) => match derived {
-                token::Literal::Void => "void".to_string(),
+                token::Literal::Void => "null".to_string(),
                 token::Literal::Bool { value } => value.to_string(),
                 token::Literal::Int { base, int_digits, r#type: _ } => {
                     let base_code = self.code_base(base);
