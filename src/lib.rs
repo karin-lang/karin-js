@@ -72,18 +72,31 @@ impl Compiler {
 
     // Generate HIR modules and type table from input tree.
     pub fn gen_hir_lowering_input(input: &InputTree) -> (Vec<Ast>, TopLevelTypeTable, HashMap<ModId, Vec<CompilerLog>>) {
-        let mut logs = HashMap::new();
         let mut asts = Vec::new();
+        let mut logs = HashMap::new();
         let mut last_body_id = 0;
         let mut top_level_type_table = TopLevelTypeTable::new();
         for each_hako in &input.hakos {
-            for each_mod in &each_hako.mods {
-                let (ast, compiler_logs) = Compiler::gen_hir_lowering_mod(each_hako, each_mod, &mut last_body_id, &mut top_level_type_table);
-                logs.insert(ast.mod_id, compiler_logs);
-                asts.push(ast);
-            }
+            Compiler::gen_hir_lowering_input_of_mods(&mut asts, &mut logs, each_hako, &each_hako.mods, &mut last_body_id, &mut top_level_type_table)
         }
         (asts, top_level_type_table, logs)
+    }
+
+    pub fn gen_hir_lowering_input_of_mods(
+        asts: &mut Vec<Ast>,
+        logs: &mut HashMap<ModId, Vec<CompilerLog>>,
+        hako: &InputHako,
+        mods: &Vec<InputMod>,
+        last_body_id: &mut usize,
+        top_level_type_table: &mut TopLevelTypeTable,
+    ) {
+        for each_mod in mods {
+            let (ast, compiler_logs) = Compiler::gen_hir_lowering_mod(hako, each_mod, last_body_id, top_level_type_table);
+            logs.insert(ast.mod_id, compiler_logs);
+            asts.push(ast);
+            // サブモジュールを再帰的に変換処理する
+            Compiler::gen_hir_lowering_input_of_mods(asts, logs, hako, &each_mod.submods, last_body_id, top_level_type_table);
+        }
     }
 
     // Generate HIR module from module input.
