@@ -5,7 +5,7 @@ mod jsify;
 
 use crate::code::Code;
 use crate::option::CompilerOptions;
-use crate::{Compiler, Output, OutputFile, OutputFileExt};
+use crate::{Compiler, Output, OutputFile};
 
 use karinc::{hir::id::*, input::*};
 use maplit::hashmap;
@@ -36,7 +36,7 @@ fn compiles() {
         Output {
             file: OutputFile {
                 name: "index".to_string(),
-                ext: OutputFileExt::Js,
+                ext: "js".to_string(),
                 source: Some(
                     Code {
                         source: "function g$my_hako$my_mod$f(a$0,a$1){}".to_string(),

@@ -40,7 +40,7 @@ impl Compiler {
         }
         let file = OutputFile {
             name: options.output_root_name.clone(),
-            ext: OutputFileExt::Js,
+            ext: "js".to_string(),
             source: Some(code),
         };
         Output { file, logs }
@@ -50,9 +50,6 @@ impl Compiler {
         let (hir, type_table, compiler_logs) = Compiler::gen_hir(input);
         let mut jsify = Jsify::new(&type_table);
         let js = jsify.jsify(&hir);
-        // todo: rem
-        println!("{:?}", js);
-        println!("{:?}", jsify.test_stmts);
         (js, compiler_logs)
     }
 

@@ -14,11 +14,6 @@ pub struct Output {
 #[derive(Clone, Debug, PartialEq)]
 pub struct OutputFile {
     pub name: String,
-    pub ext: OutputFileExt,
+    pub ext: String,
     pub source: Option<Code>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum OutputFileExt {
-    Js,
 }
