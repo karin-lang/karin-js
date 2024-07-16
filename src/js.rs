@@ -18,6 +18,12 @@ pub struct Item {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ItemKind {
     FnDecl(FnDecl),
+    SysEmbedded(SysEmbedded),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum SysEmbedded {
+    StdPrintLn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

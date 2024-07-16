@@ -3,11 +3,9 @@ use std::collections::HashMap;
 use crate::*;
 use crate::js::*;
 
-use karinc::lexer::token;
+use karinc::js::log::*;
+use karinc::lexer::token::{self, Span};
 use karinc::hir;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum JsifyLog {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BodyScope<'a> {
@@ -105,37 +103,64 @@ pub enum BlockLastBind {
 
 pub struct Jsify<'a> {
     type_table: &'a TypeConstraintTable,
-    logs: Vec<JsifyLog>,
-    pub test_stmts: Vec<Stmt>,
+    current_mod_id: Option<ModId>,
+    logs: HashMap<ModId, Vec<JsifyLog>>,
 }
 
 impl<'a> Jsify<'a> {
     pub fn new(type_table: &'a TypeConstraintTable) -> Jsify<'a> {
         Jsify {
             type_table,
-            logs: Vec::new(),
-            test_stmts: Vec::new(),
+            current_mod_id: None,
+            logs: HashMap::new(),
         }
     }
 
-    pub fn get_logs(&self) -> &Vec<JsifyLog> {
+    pub fn get_logs(&self) -> &HashMap<ModId, Vec<JsifyLog>> {
         &self.logs
     }
 
-    pub fn jsify(&mut self, hir: &hir::Hir) -> Js {
+    pub fn collect_result<T>(&mut self, result: JsifyResult<T>) -> Option<T> {
+        match result {
+            Ok(v) => Some(v),
+            Err(e) => {
+                let mod_id = self.current_mod_id.expect("current module id is not set.");
+                match self.logs.get_mut(&mod_id) {
+                    Some(v) => v.push(e),
+                    None => {
+                        let _ = self.logs.insert(mod_id, vec![e]);
+                    },
+                }
+                None
+            },
+        }
+    }
+
+    pub fn jsify(mut self, hir: &hir::Hir) -> (Js, HashMap<ModId, Vec<JsifyLog>>) {
         let mut items = HashMap::new();
         for (each_path, each_item) in &hir.items {
             let new_item = self.jsify_item(&each_item);
-            items.insert(each_path.clone(), new_item);
+            if let Some(new_item) = self.collect_result(new_item) {
+                items.insert(each_path.clone(), new_item);
+            }
         }
-        Js { items }
+        let js = Js { items };
+        (js, self.logs)
     }
 
-    pub fn jsify_item(&mut self, item: &hir::Item) -> Item {
+    pub fn jsify_item(&mut self, item: &hir::Item) -> JsifyResult<Item> {
+        self.current_mod_id = Some(item.mod_id);
         let kind = match &item.kind {
-            hir::ItemKind::FnDecl(decl) => ItemKind::FnDecl(self.jsify_fn_decl(decl)),
+            hir::ItemKind::FnDecl(decl) => match &item.marker.sys_embed {
+                Some(name) => match name.as_str() {
+                    "std_println" => ItemKind::SysEmbedded(SysEmbedded::StdPrintLn),
+                    _ => return Err(JsifyLog::UnknownSysEmbedName { name: name.clone(), span: Span::new(0, 0) }), // fix span
+                },
+                None => ItemKind::FnDecl(self.jsify_fn_decl(decl)),
+            },
         };
-        Item { id: item.id, kind }
+        let js_item = Item { id: item.id, kind };
+        Ok(js_item)
     }
 
     pub fn jsify_body(&mut self, body: &hir::Body) -> Body {

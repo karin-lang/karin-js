@@ -49,9 +49,18 @@ impl Compiler {
     }
 
     pub fn jsify(input: &InputTree) -> (Js, HashMap<ModId, Vec<CompilerLog>>) {
-        let (hir, type_table, compiler_logs) = Compiler::gen_hir(input);
-        let mut jsify = Jsify::new(&type_table);
-        let js = jsify.jsify(&hir);
+        let (hir, type_table, mut compiler_logs) = Compiler::gen_hir(input);
+        let jsify = Jsify::new(&type_table);
+        let (js, jsify_logs) = jsify.jsify(&hir);
+        for (each_mod_id, each_logs) in jsify_logs {
+            let mut new_logs = each_logs.iter().map(|v| v.clone().into()).collect();
+            match compiler_logs.get_mut(&each_mod_id) {
+                Some(v) => v.append(&mut new_logs),
+                None => {
+                    let _ = compiler_logs.insert(each_mod_id, new_logs);
+                },
+            }
+        }
         (js, compiler_logs)
     }
 

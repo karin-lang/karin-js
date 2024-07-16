@@ -11,6 +11,9 @@ impl CodeBuilder {
 
     pub fn code_item(&mut self, path: &Path, item: &Item) -> String {
         match &item.kind {
+            ItemKind::SysEmbedded(sys_embedded) => match sys_embedded {
+                SysEmbedded::StdPrintLn => "function g$std$main$println(a$0){console.log(a$0);}".to_string(),
+            },
             ItemKind::FnDecl(decl) => {
                 let name = format!("g${}", path.segments.join("$"));
                 let args: Vec<String> = (0..decl.body.arg_len).map(|v| format!("a${v}")).collect();

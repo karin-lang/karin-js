@@ -2,6 +2,7 @@ use crate::*;
 use crate::js::*;
 
 use jsify::{BlockLastBind, BodyScope, StmtSeq};
+use karinc::js::log::JsifyLog;
 use karinc::lexer::token;
 use karinc::lexer::token::Span;
 use karinc::parser::ast;
@@ -19,6 +20,113 @@ fn generate_body(id: usize) -> hir::Body {
         vars: Vec::new(),
         exprs: Vec::new(),
     }
+}
+
+#[test]
+fn jsifies_fn_decl_item() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Item {
+        id: ItemId::new(0, 0),
+        mod_id: ModId::new(0, 0),
+        marker: hir::MarkerInfo::new(),
+        accessibility: ast::Accessibility::Default,
+        kind: hir::ItemKind::FnDecl(
+            hir::FnDecl {
+                body: hir::Body {
+                    id: BodyId::new(0),
+                    ret_type: None,
+                    args: Vec::new(),
+                    vars: Vec::new(),
+                    exprs: Vec::new(),
+                },
+            },
+        ),
+    };
+    let result = jsify.jsify_item(&hir);
+
+    assert_eq!(
+        result.unwrap(),
+        Item {
+            id: ItemId::new(0, 0),
+            kind: ItemKind::FnDecl(
+                FnDecl {
+                    body: Body {
+                        arg_len: 0,
+                        stmts: Vec::new(),
+                    },
+                },
+            ),
+        },
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_std_println_item() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Item {
+        id: ItemId::new(0, 0),
+        mod_id: ModId::new(0, 0),
+        marker: hir::MarkerInfo {
+            sys_embed: Some("std_println".to_string()),
+        },
+        accessibility: ast::Accessibility::Default,
+        kind: hir::ItemKind::FnDecl(
+            hir::FnDecl {
+                body: hir::Body {
+                    id: BodyId::new(0),
+                    ret_type: None,
+                    args: Vec::new(),
+                    vars: Vec::new(),
+                    exprs: Vec::new(),
+                },
+            },
+        ),
+    };
+    let result = jsify.jsify_item(&hir);
+
+    assert_eq!(
+        result.unwrap(),
+        Item {
+            id: ItemId::new(0, 0),
+            kind: ItemKind::SysEmbedded(SysEmbedded::StdPrintLn),
+        },
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn rejects_unknown_sys_embed_name() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Item {
+        id: ItemId::new(0, 0),
+        mod_id: ModId::new(0, 0),
+        marker: hir::MarkerInfo {
+            sys_embed: Some("unknown".to_string()),
+        },
+        accessibility: ast::Accessibility::Default,
+        kind: hir::ItemKind::FnDecl(
+            hir::FnDecl {
+                body: hir::Body {
+                    id: BodyId::new(0),
+                    ret_type: None,
+                    args: Vec::new(),
+                    vars: Vec::new(),
+                    exprs: Vec::new(),
+                },
+            },
+        ),
+    };
+    let result = jsify.jsify_item(&hir);
+
+    assert_eq!(
+        result.unwrap_err(),
+        JsifyLog::UnknownSysEmbedName { name: "unknown".to_string(), span: Span::new(0, 0) /* fix: span */ }
+    );
+    assert!(jsify.get_logs().is_empty());
 }
 
 #[test]
