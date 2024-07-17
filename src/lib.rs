@@ -22,7 +22,7 @@ use karinc::log::CompilerLog;
 use karinc::input::*;
 use karinc::lexer::tokenize::Lexer;
 use karinc::parser::ast::tltype::TopLevelTypeTable;
-use karinc::parser::ast::Ast;
+use karinc::parser::ast::{Ast, Path};
 use karinc::parser::{Parser, ParserHakoContext};
 use karinc::typesys::constraint::lower::TypeConstraintLowering;
 use karinc::typesys::constraint::TypeConstraintTable;
@@ -68,7 +68,8 @@ impl Compiler {
     pub fn gen_hir(input: &InputTree) -> (Hir, TypeConstraintTable, HashMap<ModId, Vec<CompilerLog>>) {
         let (asts, mut top_level_type_table, mut logs) = Compiler::gen_hir_lowering_input(input);
         let hir = Compiler::hirify(&asts, &mut logs);
-        let type_table = Compiler::check_type(&hir, &mut top_level_type_table, &mut logs);
+        let main_fn_path = Path::from(vec![input.main_hako_name.clone(), "main".to_string(), "main".to_string()]);
+        let type_table = Compiler::check_type(&hir, &mut top_level_type_table, main_fn_path, &mut logs);
         (hir, type_table, logs)
     }
 
@@ -140,8 +141,8 @@ impl Compiler {
         hir
     }
 
-    pub fn check_type(hir: &Hir, top_level_type_table: &mut TopLevelTypeTable, logs: &mut HashMap<ModId, Vec<CompilerLog>>) -> TypeConstraintTable {
-        let (type_table, type_logs) = TypeConstraintLowering::lower(hir, top_level_type_table);
+    pub fn check_type(hir: &Hir, top_level_type_table: &mut TopLevelTypeTable, main_fn_path: Path, logs: &mut HashMap<ModId, Vec<CompilerLog>>) -> TypeConstraintTable {
+        let (type_table, type_logs) = TypeConstraintLowering::lower(hir, top_level_type_table, Some(&main_fn_path));
         for (each_mod_id, each_logs) in type_logs {
             let mut compiler_logs = each_logs.iter().map(|v| v.clone().into()).collect();
             match logs.get_mut(&each_mod_id) {
