@@ -71,6 +71,10 @@ fn jsifies_std_println_item() {
         mod_id: ModId::new(0, 0),
         marker: hir::MarkerInfo {
             sys_embed: Some("std_println".to_string()),
+            spec_description: None,
+            arg_descriptions: HashMap::new(),
+            ret_val_description: None,
+            todos: Vec::new(),
         },
         accessibility: ast::Accessibility::Default,
         kind: hir::ItemKind::FnDecl(
@@ -106,6 +110,10 @@ fn rejects_unknown_sys_embed_name() {
         mod_id: ModId::new(0, 0),
         marker: hir::MarkerInfo {
             sys_embed: Some("unknown".to_string()),
+            spec_description: None,
+            arg_descriptions: HashMap::new(),
+            ret_val_description: None,
+            todos: Vec::new(),
         },
         accessibility: ast::Accessibility::Default,
         kind: hir::ItemKind::FnDecl(
