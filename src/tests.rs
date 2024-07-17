@@ -45,6 +45,7 @@ fn compiles() {
                     },
                 ),
             },
+            todos: Vec::new(),
             logs: hashmap! {
                 ModId::new(0, 0) => Vec::new(),
             },
