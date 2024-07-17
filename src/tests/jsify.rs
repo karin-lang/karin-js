@@ -5,7 +5,7 @@ use jsify::{BlockLastBind, BodyScope, StmtSeq};
 use karinc::js::log::JsifyLog;
 use karinc::lexer::token;
 use karinc::lexer::token::Span;
-use karinc::parser::ast;
+use karinc::parser::ast::{self, Marker, MarkerKind};
 use karinc::hir;
 use karinc::hir::id::*;
 use karinc::typesys;
@@ -75,6 +75,7 @@ fn jsifies_std_println_item() {
             arg_descriptions: HashMap::new(),
             ret_val_description: None,
             todos: Vec::new(),
+            exits: false,
         },
         accessibility: ast::Accessibility::Default,
         kind: hir::ItemKind::FnDecl(
@@ -114,6 +115,7 @@ fn rejects_unknown_sys_embed_name() {
             arg_descriptions: HashMap::new(),
             ret_val_description: None,
             todos: Vec::new(),
+            exits: false,
         },
         accessibility: ast::Accessibility::Default,
         kind: hir::ItemKind::FnDecl(
@@ -994,6 +996,70 @@ fn jsifies_cond_for() {
                 },
             },
         ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_exit_marker() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::Marker(
+            Marker {
+                kind: MarkerKind::Exit,
+                span: Span::new(0, 0),
+            },
+        )
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(
+            Expr::Throw(
+                Literal::Derived(
+                    token::Literal::Str { value: "reached exit marker".to_string() },
+                ),
+            ),
+        ),
+    );
+    assert!(jsify.get_logs().is_empty());
+}
+
+#[test]
+fn jsifies_non_exit_marker() {
+    let type_table = TypeConstraintTable::new();
+    let mut jsify = Jsify::new(&type_table);
+    let hir = hir::Expr {
+        id: ExprId::new(0),
+        kind: hir::ExprKind::Marker(
+            Marker {
+                kind: MarkerKind::Todo { description: String::new() },
+                span: Span::new(0, 0),
+            },
+        )
+    };
+    let body = generate_body(0);
+    let mut body_scope = BodyScope::new(&body);
+    let mut stmt_seq = StmtSeq::new();
+    let result = jsify.jsify_expr(&mut body_scope, &mut stmt_seq, &hir, false);
+
+    assert_eq!(
+        stmt_seq,
+        Vec::new().into(),
+    );
+    assert_eq!(
+        result,
+        Stmt::Expr(Expr::Literal(Literal::Null)),
     );
     assert!(jsify.get_logs().is_empty());
 }

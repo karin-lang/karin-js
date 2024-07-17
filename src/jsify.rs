@@ -6,6 +6,7 @@ use crate::js::*;
 use karinc::js::log::*;
 use karinc::lexer::token::{self, Span};
 use karinc::hir;
+use karinc::parser::ast::{Marker, MarkerKind};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BodyScope<'a> {
@@ -236,6 +237,7 @@ impl<'a> Jsify<'a> {
             },
             hir::ExprKind::If(r#if) => self.jsify_if(body_scope, stmt_seq, r#if, expect_expr),
             hir::ExprKind::For(r#for) => self.jsify_for(body_scope, stmt_seq, r#for, expect_expr),
+            hir::ExprKind::Marker(marker) => self.jsify_marker(marker),
             hir::ExprKind::Unknown => {
                 let result = Stmt::Expr(Expr::Literal(Literal::Null));
                 StmtResult::new(result)
@@ -428,5 +430,13 @@ impl<'a> Jsify<'a> {
             },
             hir::ForKind::Range { index: _, range: _ } => unimplemented!(),
         }
+    }
+
+    pub fn jsify_marker(&mut self, marker: &Marker) -> StmtResult {
+        let expr = match &marker.kind {
+            MarkerKind::Exit => Expr::Throw(Literal::Derived(token::Literal::Str { value: "reached exit marker".to_string() })),
+            _ => Expr::Literal(Literal::Null),
+        };
+        StmtResult::new(Stmt::Expr(expr))
     }
 }

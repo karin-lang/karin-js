@@ -82,6 +82,7 @@ pub enum Expr {
     Id(Id),
     Path(Path),
     FnCall(FnCall),
+    Throw(Literal),
 }
 
 #[derive(Clone, Debug, PartialEq)]
